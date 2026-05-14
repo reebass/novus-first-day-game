@@ -171,6 +171,51 @@ h2 {
   border-color: var(--novus-dark-green);
 }
 
+.preload-screen {
+  min-height: 430px;
+  display: grid;
+  align-content: center;
+  gap: 18px;
+  padding: 28px 4px;
+  animation: screenIn 0.36s ease both;
+}
+
+.preload-copy {
+  max-width: 520px;
+}
+
+.preload-copy p {
+  margin-bottom: 0;
+  color: var(--ink-muted);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.preload-bar {
+  width: 100%;
+  height: 16px;
+  overflow: hidden;
+  background: var(--soft-gray);
+  border: 1px solid var(--line-gray);
+  border-radius: 999px;
+}
+
+.preload-bar span {
+  height: 100%;
+  display: block;
+  background: linear-gradient(90deg, var(--novus-dark-green), var(--novus-green));
+  border-radius: inherit;
+  transition: width 0.22s ease;
+}
+
+.preload-percent {
+  margin: 0;
+  color: var(--novus-dark-green);
+  font-size: 0.95rem;
+  font-weight: 900;
+  text-align: right;
+}
+
 .screen {
   position: relative;
   animation: screenIn 0.36s ease both;

@@ -18,6 +18,8 @@
   var selectedMulti = [];
   var isTransitioning = false;
   var pendingNextScreenId = "";
+  var preloadedMediaSources = {};
+  var preloadedVideoObjectUrls = [];
 
   function escapeHtml(value) {
     return String(value)
@@ -66,15 +68,161 @@
     return /\.(mp4|webm|ogg)$/i.test(path);
   }
 
+  function resolveAssetPath(path) {
+    return preloadedMediaSources[path] || path;
+  }
+
+  function mediaConfigPaths(items) {
+    return Object.keys(items || {}).map(function (key) {
+      return items[key];
+    }).filter(Boolean);
+  }
+
+  function collectMediaPaths() {
+    var seen = {};
+
+    return mediaConfigPaths(config.sceneImages)
+      .concat(mediaConfigPaths(config.heroImages))
+      .filter(function (path) {
+        if (seen[path]) {
+          return false;
+        }
+
+        seen[path] = true;
+        return true;
+      });
+  }
+
+  function renderPreloader(done, total) {
+    var percent = total ? Math.round((done / total) * 100) : 100;
+
+    progressRoot.innerHTML = "";
+    root.innerHTML = [
+      '<article class="preload-screen" aria-live="polite">',
+      '<div class="preload-copy">',
+      "<h2>Завантажуємо гру</h2>",
+      "<p>Готуємо всі зображення та відео, щоб екрани відкривались плавно.</p>",
+      "</div>",
+      '<div class="preload-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + percent + '">',
+      '<span style="width: ' + percent + '%"></span>',
+      "</div>",
+      '<p class="preload-percent">' + percent + "%</p>",
+      "</article>"
+    ].join("");
+  }
+
+  function markAssetDone(state) {
+    state.done += 1;
+    renderPreloader(state.done, state.total);
+  }
+
+  function preloadImage(path) {
+    return new Promise(function (resolve) {
+      var image = new Image();
+
+      image.decoding = "async";
+      image.onload = function () {
+        if (image.decode) {
+          image.decode().catch(function () {}).then(resolve);
+          return;
+        }
+
+        resolve();
+      };
+      image.onerror = function () {
+        console.warn("NOVUS asset failed to preload:", path);
+        resolve();
+      };
+      image.src = path;
+    });
+  }
+
+  function preloadVideoElement(src, originalPath) {
+    return new Promise(function (resolve) {
+      var video = document.createElement("video");
+      var finish = function () {
+        video.removeEventListener("canplaythrough", finish);
+        video.removeEventListener("loadeddata", finish);
+        video.removeEventListener("error", fail);
+        video.removeAttribute("src");
+        video.load();
+        resolve();
+      };
+      var fail = function () {
+        console.warn("NOVUS video failed to preload:", originalPath);
+        finish();
+      };
+
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = "auto";
+      video.addEventListener("canplaythrough", finish, { once: true });
+      video.addEventListener("loadeddata", finish, { once: true });
+      video.addEventListener("error", fail, { once: true });
+      video.src = src;
+      video.load();
+    });
+  }
+
+  function preloadVideo(path) {
+    if (!window.fetch || !window.URL || !window.URL.createObjectURL) {
+      return preloadVideoElement(path, path);
+    }
+
+    return fetch(path, { cache: "force-cache" })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("Video preload failed: " + response.status);
+        }
+
+        return response.blob();
+      })
+      .then(function (blob) {
+        var objectUrl = URL.createObjectURL(blob);
+
+        preloadedMediaSources[path] = objectUrl;
+        preloadedVideoObjectUrls.push(objectUrl);
+        return preloadVideoElement(objectUrl, path);
+      })
+      .catch(function () {
+        return preloadVideoElement(path, path);
+      });
+  }
+
+  function preloadAsset(path) {
+    return isVideoAsset(path) ? preloadVideo(path) : preloadImage(path);
+  }
+
+  function preloadGameAssets() {
+    var paths = collectMediaPaths();
+    var state = {
+      done: 0,
+      total: paths.length
+    };
+
+    renderPreloader(0, state.total);
+
+    if (!paths.length) {
+      return Promise.resolve();
+    }
+
+    return Promise.all(paths.map(function (path) {
+      return preloadAsset(path).then(function () {
+        markAssetDone(state);
+      });
+    })).then(function () {});
+  }
+
   function sceneMarkup(screen) {
     var scene = data.scenes[screen.scene] || data.scenes.start;
-    var imagePath = config.sceneImages[screen.scene];
+    var originalPath = config.sceneImages[screen.scene];
+    var imagePath = resolveAssetPath(originalPath);
 
-    if (imagePath) {
-      if (isVideoAsset(imagePath)) {
+    if (originalPath) {
+      if (isVideoAsset(originalPath)) {
         return [
           '<figure class="scene scene-image scene-video scene-' + escapeHtml(screen.scene) + '">',
-          '<video src="' + escapeHtml(imagePath) + '" autoplay loop muted playsinline preload="metadata" aria-label="' + escapeHtml(scene.label) + '" onerror="this.parentElement.classList.add(\'is-image-error\', \'scene-placeholder\'); this.remove();"></video>',
+          '<video src="' + escapeHtml(imagePath) + '" autoplay loop muted playsinline preload="auto" aria-label="' + escapeHtml(scene.label) + '" onerror="this.parentElement.classList.add(\'is-image-error\', \'scene-placeholder\'); this.remove();"></video>',
           '<span class="scene-icon" aria-hidden="true">' + escapeHtml(scene.icon) + "</span>",
           '<figcaption>' + escapeHtml(scene.label) + "</figcaption>",
           "</figure>"
@@ -99,7 +247,7 @@
   }
 
   function heroMarkup(heroKey) {
-    var imagePath = config.heroImages[heroKey];
+    var imagePath = resolveAssetPath(config.heroImages[heroKey]);
     var heroClass = "hero hero-" + heroKey;
     var fallback = '<div class="' + heroClass + ' hero-placeholder" aria-label="Герой NOVUS"><span>N</span></div>';
 
@@ -116,7 +264,7 @@
 
   function setHeroImage(heroKey) {
     var hero = root.querySelector(".hero");
-    var imagePath = config.heroImages[heroKey];
+    var imagePath = resolveAssetPath(config.heroImages[heroKey]);
 
     if (!hero || !imagePath) {
       return;
@@ -697,5 +845,13 @@
     }
   });
 
-  render();
+  preloadGameAssets().then(function () {
+    render();
+  });
+
+  window.addEventListener("beforeunload", function () {
+    preloadedVideoObjectUrls.forEach(function (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
+    });
+  });
 })();
