@@ -1,0 +1,109 @@
+# Мінігра “Мій перший день у NOVUS”
+
+Готова mobile-first onboarding-мінігра для GitHub Pages на чистому HTML, CSS і JavaScript.
+
+## Як запустити локально
+
+Відкрийте `index.html` у браузері. Сервер і npm-залежності не потрібні.
+
+## Як опублікувати на GitHub Pages
+
+1. Завантажте файли репозиторію на GitHub.
+2. У налаштуваннях репозиторію відкрийте `Settings` → `Pages`.
+3. Оберіть публікацію з гілки `main` та кореневої папки `/root`.
+4. Збережіть налаштування і відкрийте URL, який видасть GitHub Pages.
+
+## Куди вставити Google Apps Script URL
+
+У файлі `js/config.js` знайдіть поле:
+
+```js
+GOOGLE_SCRIPT_URL: ""
+```
+
+Вставте URL Web App з Google Apps Script між лапками. Якщо поле порожнє, гра не ламається: дані анкети виводяться в `console.log`, а користувач бачить фінальний екран подяки.
+
+## Де міняти тексти
+
+Усі екрани, питання, відповіді, правильні відповіді та реакції зберігаються в `js/game-data.js` у блоці:
+
+```js
+// ========================================
+// ТУТ ЗМІНЮЮТЬСЯ ТЕКСТИ ГРИ
+// ========================================
+```
+
+## Де міняти картинки героя
+
+Шляхи до героя змінюються в `js/config.js` у полі `heroImages`. Зараз підключені наявні файли з `assets/hero/`. Якщо файл не знайдеться, гра покаже CSS-placeholder героя.
+
+## Де додати картинки сцен
+
+Додайте майбутні зображення в `assets/scenes/`, а потім пропишіть шляхи в `js/config.js` у полі `sceneImages`. Поки шляхи порожні, для сцен показуються CSS-placeholder-блоки з NOVUS-кольорами.
+
+## Повний перелік зображень для генерації
+
+Шляхи до всіх зображень прописуються в `js/config.js`.
+
+### Герой
+
+Зображення героя зберігаються в `assets/hero/` і підключаються в `heroImages`.
+
+| Ключ у коді | Рекомендована назва файлу | Що згенерувати |
+| --- | --- | --- |
+| `happy` | `hero-happy.png` | Радісний герой NOVUS для старту та позитивних моментів. |
+| `support` | `hero-support.png` | Підтримуючий герой, який допомагає після помилки. |
+| `surprised` | `hero-surprised.png` | Здивований герой для легкої гумористичної сцени з дзеркалом. |
+| `celebrate` | `hero-celebrate.png` | Святковий герой для фіналу з конфеті. |
+
+### Сцени
+
+Зображення сцен зберігаються в `assets/scenes/` і підключаються в `sceneImages`.
+
+| Ключ у коді | Рекомендована назва файлу | Що згенерувати |
+| --- | --- | --- |
+| `start` | `start.png` | Вхід або welcome-зона NOVUS, перший день, дружня атмосфера. |
+| `manager` | `manager.png` | Зустріч нового співробітника з керівником у магазині. |
+| `training` | `training.png` | Навчальна платформа “Супутник”, екран або планшет з навчанням. |
+| `uniform` | `uniform.png` | Отримання брендованого спецодягу NOVUS. |
+| `staffRoom` | `staff-room.png` | Кімната персоналу з дзеркалом, шафками та спецодягом. |
+| `tour` | `store-tour.png` | Екскурсія торговельною залою NOVUS з керівником. |
+| `customer` | `customer-help.png` | Клієнт у торговельному залі питає нового співробітника про товар. |
+| `roleChoice` | `role-choice.png` | Вибір ролі: каса, викладка товарів, зона прилавків. |
+| `cashier` | `cashier.png` | Робоча зона касира, клієнт, наставник поруч. |
+| `shelf` | `shelf-seller.png` | Викладка товарів на полицях, допомога клієнту біля стелажа. |
+| `counter` | `counter-seller.png` | Зона прилавків зі свіжими стравами та обслуговуванням клієнтів. |
+| `final` | `final.png` | Святковий фінал NOVUS з конфеті або салютом. |
+
+Після додавання файлів оновіть `js/config.js`, наприклад:
+
+```js
+sceneImages: {
+  start: "assets/scenes/start.png",
+  manager: "assets/scenes/manager.png"
+}
+```
+
+## Приклад Google Apps Script
+
+```js
+function doPost(e) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const data = JSON.parse(e.postData.contents);
+
+  sheet.appendRow([
+    new Date(),
+    data.name,
+    data.position,
+    data.gameRole,
+    data.age,
+    data.district,
+    data.phone,
+    data.consent
+  ]);
+
+  return ContentService
+    .createTextOutput(JSON.stringify({ ok: true }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+```
