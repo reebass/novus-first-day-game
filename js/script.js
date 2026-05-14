@@ -95,20 +95,31 @@
 
   function renderPreloader(done, total) {
     var percent = total ? Math.round((done / total) * 100) : 100;
+    var preloadScreen = root.querySelector(".preload-screen");
+    var preloadBar = root.querySelector(".preload-bar");
+    var preloadBarFill = root.querySelector(".preload-bar span");
+    var preloadPercent = root.querySelector(".preload-percent");
 
-    progressRoot.innerHTML = "";
-    root.innerHTML = [
-      '<article class="preload-screen" aria-live="polite">',
-      '<div class="preload-copy">',
-      "<h2>Завантажуємо гру</h2>",
-      "<p>Готуємо всі зображення та відео, щоб екрани відкривались плавно.</p>",
-      "</div>",
-      '<div class="preload-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + percent + '">',
-      '<span style="width: ' + percent + '%"></span>',
-      "</div>",
-      '<p class="preload-percent">' + percent + "%</p>",
-      "</article>"
-    ].join("");
+    if (!preloadScreen) {
+      progressRoot.innerHTML = "";
+      root.innerHTML = [
+        '<article class="preload-screen" aria-live="polite">',
+        '<div class="preload-copy">',
+        "<h2>Завантажуємо гру</h2>",
+        "<p>Готуємо всі зображення та відео, щоб екрани відкривались плавно.</p>",
+        "</div>",
+        '<div class="preload-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + percent + '">',
+        '<span style="width: ' + percent + '%"></span>',
+        "</div>",
+        '<p class="preload-percent">' + percent + "%</p>",
+        "</article>"
+      ].join("");
+      return;
+    }
+
+    preloadBar.setAttribute("aria-valuenow", percent);
+    preloadBarFill.style.width = percent + "%";
+    preloadPercent.textContent = percent + "%";
   }
 
   function markAssetDone(state) {
