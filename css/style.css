@@ -231,7 +231,6 @@ h2 {
 .scene {
   position: relative;
   z-index: 1;
-  min-height: 200px;
   margin: 0;
   border-radius: 8px;
   overflow: hidden;
@@ -398,11 +397,31 @@ h2 {
 .story-text {
   color: var(--dark-gray);
   font-size: 1rem;
-  line-height: 1.48;
+  line-height: 1.2;
 }
 
 .story-text p {
   margin-bottom: 10px;
+}
+
+.story-text strong {
+  font-weight: 900;
+}
+
+.text-accent {
+  color: var(--novus-dark-green);
+  font-weight: 900;
+}
+
+.story-text-final {
+  text-align: center;
+  padding: 0 25px;
+  margin-top: 20px;
+  margin-bottom: 50px;
+}
+
+.screen-title-final {
+  text-align: center;
 }
 
 .button-stack,
@@ -795,6 +814,10 @@ h2 {
     align-items: center;
   }
 
+  .story-text-final {
+  padding: 0;
+  }
+
   .game-card {
     min-height: auto;
     padding: 22px;
@@ -812,9 +835,6 @@ h2 {
     min-height: 260px;
   }
 
-  .scene {
-    min-height: 250px;
-  }
 
   .scene-icon {
     width: 78px;
@@ -866,6 +886,8 @@ h2 {
     width: min(32vw, 290px);
     height: auto;
   }
+
+
 }
 
 @media (min-width: 1181px) {
@@ -875,4 +897,6 @@ h2 {
     width: min(32vw, 290px);
     height: auto;
   }
+
+
 }

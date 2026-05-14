@@ -106,7 +106,7 @@
         '<article class="preload-screen" aria-live="polite">',
         '<div class="preload-copy">',
         "<h2>Завантажуємо гру</h2>",
-        "<p>Готуємо всі зображення та відео, щоб екрани відкривались плавно.</p>",
+        "<p>Підготовка до твого першого дня в NOVUS. Лишилось кілька секунд...</p>",
         "</div>",
         '<div class="preload-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + percent + '">',
         '<span style="width: ' + percent + '%"></span>',
@@ -285,9 +285,31 @@
     hero.innerHTML = '<img src="' + escapeHtml(imagePath) + '" alt="Hero NOVUS" onerror="this.parentElement.classList.add(\'hero-placeholder\'); var s=document.createElement(\'span\'); s.textContent=\'N\'; this.parentElement.appendChild(s); this.remove();">';
   }
 
+  function formatInlineText(value) {
+    var text = String(value || "");
+    var pattern = /(\*\*([^*]+)\*\*|\[\[([^\]]+)\]\])/g;
+    var result = "";
+    var lastIndex = 0;
+    var match;
+
+    while ((match = pattern.exec(text)) !== null) {
+      result += escapeHtml(text.slice(lastIndex, match.index));
+
+      if (match[2]) {
+        result += "<strong>" + escapeHtml(match[2]) + "</strong>";
+      } else {
+        result += '<span class="text-accent">' + escapeHtml(match[3]) + "</span>";
+      }
+
+      lastIndex = pattern.lastIndex;
+    }
+
+    return result + escapeHtml(text.slice(lastIndex));
+  }
+
   function textMarkup(lines) {
     return (lines || []).map(function (line) {
-      return "<p>" + escapeHtml(line) + "</p>";
+      return "<p>" + formatInlineText(line) + "</p>";
     }).join("");
   }
 
@@ -300,6 +322,9 @@
   }
 
   function renderShell(screen, bodyMarkup, extraClass) {
+    var storyTextClass = "story-text" + (extraClass === "screen-final" ? " story-text-final" : "");
+    var titleClass = "screen-title" + (extraClass === "screen-final" ? " screen-title-final" : "");
+
     renderProgress(screen.progress);
 
     root.innerHTML = [
@@ -309,8 +334,8 @@
       screen.showHeroOverlay === false ? "" : heroMarkup(screen.hero),
       "</div>",
       '<div class="content-block">',
-      "<h2>" + escapeHtml(screen.title) + "</h2>",
-      '<div class="story-text">' + textMarkup(screen.text) + "</div>",
+      '<h2 class="' + titleClass + '">' + escapeHtml(screen.title) + "</h2>",
+      '<div class="' + storyTextClass + '">' + textMarkup(screen.text) + "</div>",
       bodyMarkup,
       "</div>",
       "</article>"
@@ -627,10 +652,7 @@
 
     clearWrongState();
     syncAnswerStates();
-    setFeedback(
-      selectedMulti.length === maxCount ? "" : "Оберіть рівно " + maxCount + " варіанти.",
-      selectedMulti.length === maxCount ? "" : "info"
-    );
+    setFeedback("", "");
   }
 
   function submitMulti() {
