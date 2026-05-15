@@ -74,6 +74,7 @@ GOOGLE_SCRIPT_URL: ""
 | `shelf` | `shelf-seller.png` | Викладка товарів на полицях, допомога клієнту біля стелажа. |
 | `counter` | `counter-seller.png` | Зона прилавків зі свіжими стравами та обслуговуванням клієнтів. |
 | `final` | `final.png` | Святковий фінал NOVUS з конфеті або салютом. |
+| `declineThanks` | `decline-thanks.mp4` | Окреме відео для сценарію “Дякую. Мені це не цікаво.” |
 
 Після додавання файлів оновіть `js/config.js`, наприклад:
 
@@ -86,24 +87,16 @@ sceneImages: {
 
 ## Приклад Google Apps Script
 
+Повний актуальний код лежить у файлі `google-apps-script.js`. Його потрібно вставити в Google Apps Script, зберегти й перевипустити Web App deployment.
+Важливо замінити старий код повністю: якщо лишиться старий `doPost` з `appendRow([new Date(), ...])`, дата старту буде записуватися в першу колонку `SessionId`.
+Після деплою відкрийте Web App URL у браузері: новий скрипт має показати `novus-mini-game-tracking-v2`.
+
+Очікувані колонки таблиці:
+
+```text
+SessionId, Timestart, Timeend, Timestamp, Name, Position, GameRole, Age, District, Phone, Consent
+```
+
 ```js
-function doPost(e) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  const data = JSON.parse(e.postData.contents);
-
-  sheet.appendRow([
-    new Date(),
-    data.name,
-    data.position,
-    data.gameRole,
-    data.age,
-    data.district,
-    data.phone,
-    data.consent
-  ]);
-
-  return ContentService
-    .createTextOutput(JSON.stringify({ ok: true }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+// Див. google-apps-script.js
 ```

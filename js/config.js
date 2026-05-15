@@ -49,13 +49,15 @@
       training: "assets/scenes/training.png",
       uniform: "assets/scenes/uniform.png",
       staffRoom: "assets/scenes/staff-room.png",
+      lunchBreak: "assets/scenes/lunch-break.png",
       tour: "assets/scenes/store-tour.png",
       customer: "assets/scenes/customer-help.png",
       roleChoice: "assets/scenes/role-choice.png",
       cashier: "assets/scenes/cashier.png",
       shelf: "assets/scenes/shelf-seller.png",
       counter: "assets/scenes/counter-seller.png",
-      final: "assets/scenes/final.mp4"
+      final: "assets/scenes/final.mp4",
+      declineThanks: "assets/scenes/decline-thanks.mp4"
     },
 
     progress: [

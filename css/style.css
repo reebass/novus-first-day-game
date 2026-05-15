@@ -424,6 +424,11 @@ h2 {
   text-align: center;
 }
 
+.story-text-start,
+.screen-title-start {
+  text-align: center;
+}
+
 .button-stack,
 .answers,
 .role-grid {
@@ -461,6 +466,13 @@ h2 {
   color: var(--novus-dark-green);
   background: var(--novus-white);
   border-color: rgba(66, 172, 53, 0.42);
+}
+
+.btn-decline-lead {
+  color: var(--ink-muted);
+  background: var(--soft-gray);
+  border-color: var(--line-gray);
+  font-size: 0.95rem;
 }
 
 .btn:hover,

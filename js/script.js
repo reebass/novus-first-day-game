@@ -20,6 +20,15 @@
   var pendingNextScreenId = "";
   var preloadedMediaSources = {};
   var preloadedVideoObjectUrls = [];
+  var trackingStoragePrefix = "novusGameTracking:";
+  var trackingKeys = {
+    sessionId: trackingStoragePrefix + "sessionId",
+    timestart: trackingStoragePrefix + "timestart",
+    timeend: trackingStoragePrefix + "timeend",
+    startSent: trackingStoragePrefix + "startSent",
+    endSent: trackingStoragePrefix + "endSent",
+    completed: trackingStoragePrefix + "completed"
+  };
 
   function escapeHtml(value) {
     return String(value)
@@ -32,6 +41,146 @@
 
   function currentScreen() {
     return data.screens[currentScreenId];
+  }
+
+  function storageGet(key) {
+    try {
+      return window.sessionStorage.getItem(key);
+    } catch (err) {
+      return "";
+    }
+  }
+
+  function storageSet(key, value) {
+    try {
+      window.sessionStorage.setItem(key, value);
+    } catch (err) {
+      // Tracking should never block the game if browser storage is unavailable.
+    }
+  }
+
+  function storageRemove(key) {
+    try {
+      window.sessionStorage.removeItem(key);
+    } catch (err) {
+      // Ignore storage cleanup errors.
+    }
+  }
+
+  function generateSessionId() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") {
+      return window.crypto.randomUUID();
+    }
+
+    return [
+      Date.now().toString(36),
+      Math.random().toString(36).slice(2),
+      Math.random().toString(36).slice(2)
+    ].join("-");
+  }
+
+  function currentIsoTime() {
+    return new Date().toISOString();
+  }
+
+  function resetTrackingSession() {
+    Object.keys(trackingKeys).forEach(function (key) {
+      storageRemove(trackingKeys[key]);
+    });
+  }
+
+  function trackingSessionId() {
+    var sessionId = storageGet(trackingKeys.sessionId);
+
+    if (!sessionId) {
+      sessionId = generateSessionId();
+      storageSet(trackingKeys.sessionId, sessionId);
+    }
+
+    return sessionId;
+  }
+
+  function sendTrackingEvent(type, payload) {
+    var dataPayload = Object.assign({
+      event: type,
+      sessionId: trackingSessionId()
+    }, payload || {});
+    var timestart = storageGet(trackingKeys.timestart);
+    var timeend = storageGet(trackingKeys.timeend);
+
+    if (timestart && !dataPayload.timestart) {
+      dataPayload.timestart = timestart;
+    }
+
+    if (timeend && !dataPayload.timeend) {
+      dataPayload.timeend = timeend;
+    }
+
+    if (!config.GOOGLE_SCRIPT_URL) {
+      console.log("NOVUS tracking:", dataPayload);
+      return Promise.resolve();
+    }
+
+    return fetch(config.GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8"
+      },
+      body: JSON.stringify(dataPayload)
+    });
+  }
+
+  function markTrackingFlag(key) {
+    storageSet(key, "1");
+  }
+
+  function trackStart() {
+    if (storageGet(trackingKeys.sessionId) || storageGet(trackingKeys.startSent)) {
+      resetTrackingSession();
+    }
+
+    if (!storageGet(trackingKeys.timestart)) {
+      storageSet(trackingKeys.timestart, currentIsoTime());
+    }
+
+    if (storageGet(trackingKeys.startSent)) {
+      return Promise.resolve();
+    }
+
+    markTrackingFlag(trackingKeys.startSent);
+
+    return sendTrackingEvent("start").catch(function (err) {
+      console.error(err);
+    });
+  }
+
+  function trackEnd() {
+    if (!storageGet(trackingKeys.timestart)) {
+      storageSet(trackingKeys.timestart, currentIsoTime());
+    }
+
+    if (!storageGet(trackingKeys.timeend)) {
+      storageSet(trackingKeys.timeend, currentIsoTime());
+    }
+
+    if (!storageGet(trackingKeys.startSent)) {
+      markTrackingFlag(trackingKeys.startSent);
+    }
+
+    if (storageGet(trackingKeys.endSent)) {
+      return Promise.resolve();
+    }
+
+    markTrackingFlag(trackingKeys.endSent);
+
+    return sendTrackingEvent("end").catch(function (err) {
+      console.error(err);
+    });
+  }
+
+  function completeTrackingSession() {
+    markTrackingFlag(trackingKeys.completed);
   }
 
   function progressIndex(key) {
@@ -322,8 +471,18 @@
   }
 
   function renderShell(screen, bodyMarkup, extraClass) {
-    var storyTextClass = "story-text" + (extraClass === "screen-final" ? " story-text-final" : "");
-    var titleClass = "screen-title" + (extraClass === "screen-final" ? " screen-title-final" : "");
+    var isFinalScreen = screen.id === "final";
+    var isStartScreen = screen.id === "start";
+    var isRoleChoiceScreen = screen.id === "roleChoice";
+    var isDeclineThanksScreen = screen.id === "declineThanks";
+    var storyTextClass = "story-text" + (isFinalScreen ? " story-text-final" : "") 
+    + (isStartScreen ? " story-text-start" : "") 
+    + (isRoleChoiceScreen ? " story-text-start" : "") 
+    + (isDeclineThanksScreen ? " story-text-start" : "");
+    var titleClass = "screen-title" + (isFinalScreen ? " screen-title-final" : "") 
+    + (isStartScreen ? " screen-title-start" : "") 
+    + (isRoleChoiceScreen ? " screen-title-start" : "")
+    + (isDeclineThanksScreen ? " screen-title-start" : "");
 
     renderProgress(screen.progress);
 
@@ -434,14 +593,18 @@
       '<label class="consent-row"><input name="consent" type="checkbox" required><span>Підтверджую згоду на обробку персональних даних для зв’язку щодо вакансій NOVUS.</span></label>',
       '<div class="form-error" id="formError" aria-live="assertive"></div>',
       '<button class="btn btn-primary" type="submit">Надіслати анкету</button>',
+      '<button class="btn btn-secondary btn-decline-lead" type="button" data-decline-lead>Дякую. Мені це не цікаво.</button>',
       "</form>"
     ].join("");
 
     renderShell(screen, '<div class="confetti" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>' + form, "screen-final");
+    trackEnd();
   }
 
   function renderThanks(screen) {
-    renderShell(screen, '<div class="confetti" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>', "screen-thanks");
+    var confetti = screen.id === "declineThanks" ? "" : '<div class="confetti" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>';
+
+    renderShell(screen, confetti, "screen-thanks");
   }
 
   function render() {
@@ -787,19 +950,7 @@
   }
 
   function sendForm(payload) {
-    if (!config.GOOGLE_SCRIPT_URL) {
-      console.log("NOVUS анкета:", payload);
-      return Promise.resolve();
-    }
-
-    return fetch(config.GOOGLE_SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8"
-      },
-      body: JSON.stringify(payload)
-    });
+    return sendTrackingEvent("submit", payload);
   }
 
   function handleFormSubmit(form) {
@@ -824,7 +975,24 @@
         console.error(err);
       })
       .then(function () {
+        completeTrackingSession();
         goTo("thanks");
+      });
+  }
+
+  function handleDeclineLead(button) {
+    button.disabled = true;
+    button.textContent = "Дякуємо...";
+
+    markTrackingFlag(trackingKeys.endSent);
+
+    sendTrackingEvent("decline")
+      .catch(function (err) {
+        console.error(err);
+      })
+      .then(function () {
+        completeTrackingSession();
+        goTo("declineThanks");
       });
   }
 
@@ -834,9 +1002,19 @@
     var answerButtonEl = event.target.closest("[data-answer]");
     var roleButton = event.target.closest("[data-role-next]");
     var multiSubmit = event.target.closest("[data-submit-multi]");
+    var declineButton = event.target.closest("[data-decline-lead]");
 
     if (nextButton) {
+      if (currentScreenId === config.game.firstScreen) {
+        trackStart();
+      }
+
       goTo(nextButton.getAttribute("data-next"));
+      return;
+    }
+
+    if (declineButton) {
+      handleDeclineLead(declineButton);
       return;
     }
 
