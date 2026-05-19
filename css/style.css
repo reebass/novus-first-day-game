@@ -10,6 +10,7 @@
   --success: #42AC35;
   --ink-muted: #5E6A5E;
   --shadow: 0 18px 45px rgba(17, 116, 7, 0.14);
+  --form-field-height: 50px;
 }
 
 * {
@@ -635,7 +636,8 @@ h2 {
 
 .lead-form input,
 .lead-form select {
-  min-height: 50px;
+  min-height: var(--form-field-height);
+  height: var(--form-field-height);
   width: 100%;
   padding: 0 12px;
   color: var(--dark-gray);
